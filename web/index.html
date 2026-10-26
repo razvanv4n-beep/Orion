@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#101012">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Orion</title>
+<style>
+:root{--accent:#66A5FF;--bg:#101012;--panel:rgba(255,255,255,.07);--edge:rgba(255,255,255,.16);--text:#fff;--muted:#c4c4c9;--faint:#8e8e95;--veil:.5;--bgimg:none}
+:root[data-theme=light]{--bg:#f1f1ee;--panel:rgba(255,255,255,.6);--edge:rgba(0,0,0,.12);--text:#1b1b1f;--muted:#55555c;--faint:#8a8a92}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,"Segoe UI",Inter,system-ui,sans-serif;overflow:hidden}
+#bg{position:fixed;inset:0;background:var(--bgimg) center/cover no-repeat;z-index:0}
+#veil{position:fixed;inset:0;background:var(--bg);opacity:var(--veil);z-index:0}
+#app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;max-width:860px;margin:0 auto;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom)}
+.glass{background:var(--panel);border:1px solid var(--edge);border-radius:22px;backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4)}
+header{display:flex;align-items:center;gap:8px;padding:10px 6px}
+header h1{font-size:18px;margin:0;flex:1;font-weight:700}
+button{font:inherit;color:var(--text);cursor:pointer}
+.ib{width:38px;height:38px;border-radius:50%;border:1px solid var(--edge);background:var(--panel);display:grid;place-items:center;font-size:17px}
+.ib:active{transform:scale(.94)}
+#log{flex:1;overflow-y:auto;padding:6px 2px 12px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+.msg{max-width:92%;padding:11px 14px;border-radius:20px;word-wrap:break-word;overflow-wrap:anywhere}
+.msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:6px;white-space:pre-wrap}
+.msg.ai{align-self:flex-start;border-bottom-left-radius:6px}
+.msg p{margin:.45em 0}.msg p:first-child{margin-top:0}.msg p:last-child{margin-bottom:0}
+.msg pre{background:rgba(0,0,0,.35);color:#f4f4f5;padding:10px;border-radius:12px;overflow-x:auto;font-size:13px}
+.msg code{font-family:Consolas,Menlo,monospace;font-size:.9em;background:rgba(127,127,127,.2);padding:1px 5px;border-radius:6px}.msg pre code{background:none;padding:0}
+.who{font-size:11px;color:var(--faint);font-weight:700;letter-spacing:.06em;margin-bottom:3px}
+.empty{margin:auto;text-align:center;color:var(--muted)}.empty h2{color:var(--text);margin:.2em}
+#bar{display:flex;gap:8px;align-items:flex-end;padding:8px;margin:0 0 10px}
+#in{flex:1;resize:none;background:transparent;border:none;outline:none;color:var(--text);font:inherit;max-height:140px;padding:8px 6px}
+#send{background:var(--accent);border:none;color:#fff}
+/* math */
+.math{font-family:"Cambria Math","STIX Two Math",Cambria,"Times New Roman",serif;font-size:1.12em}
+.math.block{display:block;text-align:center;margin:.6em 0;overflow-x:auto}
+.mfrac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 .15em}
+.mnum{padding:0 .25em;border-bottom:1.5px solid currentColor}.mden{padding:0 .25em}.mfrac.nob .mnum{border:0}
+.msqrt{display:inline-flex;align-items:stretch;position:relative}.mrad{font-size:1.15em;line-height:1}
+.mbar{border-top:1.5px solid currentColor;padding:0 .12em;margin-top:.12em}.mroot{font-size:.6em;align-self:flex-start}
+.mfn{font-style:normal}.mbig{font-size:1.5em;vertical-align:middle;line-height:1}.mtext{font-style:normal;font-family:inherit}
+.mss{display:inline-flex;flex-direction:column;vertical-align:middle;font-size:.75em;line-height:1.05}.mss sup,.mss sub{line-height:1.05;vertical-align:baseline}
+.mgap{display:inline-block;width:1.2em}.mover{border-top:1.4px solid currentColor}.math i{font-style:italic}
+/* settings */
+#set{position:fixed;inset:0;z-index:5;display:none;background:rgba(0,0,0,.45);align-items:flex-end;justify-content:center}
+#set.open{display:flex}
+#sheet{width:min(560px,100%);max-height:92%;overflow-y:auto;padding:18px;margin:8px;background:var(--bg);border:1px solid var(--edge);border-radius:24px}
+#sheet h3{margin:.2em 0 .6em}label{display:block;font-size:12px;color:var(--faint);font-weight:700;letter-spacing:.05em;margin:14px 0 5px}
+input[type=text],input[type=password],select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--edge);background:var(--panel);color:var(--text);font:inherit}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.btn{padding:9px 14px;border-radius:12px;border:1px solid var(--edge);background:var(--panel)}
+.btn.p{background:var(--accent);border-color:transparent;color:#fff}.sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--edge);padding:0}
+small{color:var(--faint)}
+:root{--fs:15px}body{font-size:var(--fs)}
+#chips{display:none;flex-wrap:wrap;gap:6px;padding:0 4px 6px}#chips.show{display:flex}
+.chip{display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;border:1px solid var(--edge);background:var(--panel);font-size:12px;max-width:100%}
+.chip img{width:22px;height:22px;border-radius:6px;object-fit:cover}.chip span.n{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.chip b{cursor:pointer;color:var(--faint)}
+.att{display:inline-block;margin:0 4px 4px 0;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.22);font-size:12px}
+.msg.user img.ui{display:block;max-width:180px;max-height:180px;border-radius:12px;margin-bottom:6px}
+.act{display:flex;gap:4px;margin-top:6px}.act button{background:none;border:none;color:var(--faint);font-size:12px;padding:3px 7px;border-radius:8px}.act button:hover{background:var(--panel);color:var(--text)}
+.src{font-size:12px;color:var(--faint);margin-top:6px}.src a{color:var(--accent);text-decoration:none;margin-right:8px}
+textarea.big{width:100%;min-height:70px;padding:10px 12px;border-radius:12px;border:1px solid var(--edge);background:var(--panel);color:var(--text);font:inherit;resize:vertical}
+.mem{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--edge);font-size:13px}.mem span{flex:1}.mem b{cursor:pointer;color:var(--faint)}
+#drop{position:fixed;inset:0;z-index:9;background:rgba(0,0,0,.55);display:none;place-items:center;font-size:20px;color:#fff;pointer-events:none}#drop.show{display:grid}
+.icard{margin:.6em 0;border:1px solid var(--edge);border-radius:16px;overflow:hidden;background:rgba(127,127,127,.12)}.icard img{display:block;width:100%;height:auto}
+.icard .ib2{display:flex;gap:8px;align-items:center;padding:9px 12px;font-size:13px;color:var(--muted)}.icard .ib2 span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icard button{padding:7px 12px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-weight:600}.icard .ph{padding:34px 12px;text-align:center;color:var(--muted)}
+.fcard{display:flex;align-items:center;gap:12px;margin:.6em 0;padding:10px 12px;border:1px solid var(--edge);border-radius:16px;background:rgba(127,127,127,.12)}
+.fcard .fi{font-size:26px}.fcard .fn{flex:1;min-width:0}.fcard .fn b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fcard .fn span{font-size:12px;color:var(--faint)}
+.fcard button{padding:8px 13px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-weight:600}.fcard button.alt{background:var(--panel);border:1px solid var(--edge);color:var(--text)}
+.ib.on{background:var(--accent);border-color:transparent;color:#fff}
+.ib.rec{animation:pulse 1.1s infinite}@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(102,165,255,.25)}}
+#vs{display:none;text-align:center;font-size:13px;color:var(--muted);padding:2px 0 6px}#vs.show{display:block}
+#hist{position:fixed;inset:0 auto 0 0;width:min(300px,86%);z-index:4;transform:translateX(-105%);transition:.2s;background:var(--bg);border-right:1px solid var(--edge);padding:calc(env(safe-area-inset-top) + 12px) 12px 12px;overflow-y:auto}
+#hist.open{transform:none}#hist .it{padding:9px 10px;border-radius:12px;cursor:pointer;display:flex;justify-content:space-between;gap:6px}#hist .it:hover,#hist .it.on{background:var(--panel)}
+/* ===== Orion 5.1 additions ===== */
+html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;background:var(--bg)}
+*{-webkit-tap-highlight-color:transparent}
+button,summary,select,.it,.chip,.sw,.qp b{touch-action:manipulation}
+button,summary,.it,header,.who,.act{-webkit-user-select:none;user-select:none}
+#bg,#veil{position:fixed;inset:0;height:100%}
+#app{position:fixed;top:0;bottom:0;left:0;right:0;margin:0 auto;width:min(860px,100%);max-width:none;height:auto;padding:max(env(safe-area-inset-top),8px) 12px calc(env(safe-area-inset-bottom)*.4 + 8px)}
+header{gap:10px}
+#logo{width:30px;height:30px;border-radius:9px;object-fit:cover;flex:none}
+header h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib{flex:none;transition:transform .12s,background .15s}.ib svg{display:block}
+.ib.sm{width:auto;height:auto;border:none;background:none;border-radius:8px;padding:5px 7px}
+#bar{margin:0;align-items:center}
+#send{width:40px;height:40px}
+#scrim{position:fixed;inset:0;z-index:3;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s}
+#scrim.show{opacity:1;pointer-events:auto}
+#newc{align-self:flex-start}#hist{transition:transform .22s cubic-bezier(.2,.8,.2,1);will-change:transform;display:flex;flex-direction:column;overflow:hidden}
+#hist.open{box-shadow:8px 0 40px rgba(0,0,0,.35)}
+#hl{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#hsearch{margin:8px 0}
+.ov{position:fixed;inset:0;z-index:6;display:none;background:rgba(0,0,0,.45);align-items:flex-end;justify-content:center}.ov.open{display:flex}
+.sheet,#sheet{width:min(560px,100%);max-height:92%;overflow-y:auto;padding:18px;margin:8px;background:var(--bg);border:1px solid var(--edge);border-radius:24px;animation:up .25s cubic-bezier(.2,.8,.2,1);-webkit-overflow-scrolling:touch}
+@keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+.sh{display:flex;align-items:center;justify-content:space-between;position:sticky;top:-18px;background:var(--bg);padding:8px 0;z-index:2;margin-top:-8px}.sh h3{margin:0}
+details{border:1px solid var(--edge);border-radius:16px;margin:10px 0;padding:0 14px;background:var(--panel)}
+summary{padding:13px 0;font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
+summary::-webkit-details-marker{display:none}summary:after{content:'\203A';transform:rotate(90deg);transition:.2s;color:var(--faint);font-size:20px}details[open]>summary:after{transform:rotate(-90deg)}
+details>div{padding-bottom:12px}
+.slot{border-top:1px solid var(--edge);margin-top:12px;padding-top:4px}.slot b{font-size:13px}
+input[type=number]{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--edge);background:var(--panel);color:var(--text);font:inherit}
+input[type=color]{width:44px;height:36px;border:1px solid var(--edge);border-radius:10px;background:none;padding:2px}
+#logoprev{width:56px;height:56px;border-radius:14px;object-fit:cover;border:1px solid var(--edge)}
+.learned{font-size:13px;color:var(--muted);line-height:1.6}
+/* animation */
+@keyframes rise{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+.msg.fresh{animation:rise .28s cubic-bezier(.2,.8,.2,1)}
+.who{display:flex;align-items:center;gap:8px}
+.st{display:none;align-items:center;gap:6px;font-weight:600;letter-spacing:0;font-size:12px}
+.msg.live .st{display:inline-flex}.msg.live .act{display:none}
+.orb{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:orb 1.2s ease-in-out infinite}
+@keyframes orb{0%,100%{transform:scale(.7);opacity:.6}50%{transform:scale(1.25);opacity:1;box-shadow:0 0 10px var(--accent)}}
+.tl{background:linear-gradient(90deg,var(--faint) 20%,var(--text) 50%,var(--faint) 80%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shim 1.6s linear infinite}
+@keyframes shim{to{background-position:-200% 0}}
+.think{display:flex;gap:5px;padding:6px 0 2px}.think i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:bounce 1.1s infinite ease-in-out}
+.think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}
+.caret{display:inline-block;width:2px;height:1.05em;background:var(--accent);margin-left:2px;vertical-align:text-bottom;animation:blink .9s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.via{margin-left:auto;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:var(--faint);border:1px solid var(--edge);border-radius:999px;padding:1px 7px;font-weight:600;letter-spacing:0}
+.act button{display:grid;place-items:center}.act button.on{color:var(--accent)}
+.ib.rec{animation:pulse 1.1s infinite}
+.dots:after{content:'';animation:dots 1.2s steps(4) infinite}@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%,100%{content:'...'}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* content */
+.cb{display:flex;justify-content:space-between;align-items:center;margin-top:.6em;padding:5px 10px;background:rgba(0,0,0,.5);border-radius:12px 12px 0 0;font-size:11px;color:#c4c4c9}
+.cb button{background:none;border:none;color:#c4c4c9;font-size:11px;padding:2px 6px}.cb+pre{margin-top:0;border-radius:0 0 12px 12px}
+.msg table{border-collapse:collapse;display:block;overflow-x:auto;margin:.5em 0}.msg td,.msg th{border:1px solid var(--edge);padding:5px 9px;font-size:.93em}.msg th{background:rgba(127,127,127,.18)}
+.msg.ai a{color:var(--accent)}
+.msg h3,.msg h4{margin:.6em 0 .3em}
+.empty .elogo{width:64px;height:64px;border-radius:18px;object-fit:cover;margin-bottom:6px}
+.qp{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}.qp button{padding:8px 13px;border-radius:999px;border:1px solid var(--edge);background:var(--panel);font-size:13px}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 12px);transform:translate(-50%,-20px);opacity:0;z-index:20;background:var(--bg);border:1px solid var(--edge);border-radius:999px;padding:8px 16px;font-size:13px;transition:.25s;pointer-events:none;max-width:90%;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+</style></head><body>
+<div id="bg"></div><div id="veil"></div><div id="scrim"></div><div id="toast"></div>
+<aside id="hist"><button class="btn p" id="newc">New chat</button><input type="text" id="hsearch" placeholder="Search chats" autocomplete="off"><div id="hl"></div></aside>
+<div id="app">
+ <header><button class="ib" id="hb" aria-label="Chats"></button><img id="logo" alt=""><h1 id="title">Orion</h1><button class="ib" id="ab" aria-label="AI personality"></button><button class="ib" id="sb" aria-label="Settings"></button></header>
+ <div id="log"></div>
+ <div id="vs"></div><div id="chips"></div>
+ <div id="bar" class="glass"><button class="ib" id="att" aria-label="Attach"></button><input type="file" id="attf" multiple hidden><button class="ib" id="web" aria-label="Search the web with the next message"></button><button class="ib" id="mic" aria-label="Dictate"></button><textarea id="in" rows="1" placeholder="Message…"></textarea><button class="ib" id="send" aria-label="Send"></button></div>
+</div>
+<div id="drop">Drop files or pictures to attach</div>
+<div id="set" class="ov"><div id="sheet">
+ <div class="sh"><h3>Settings</h3><button class="btn p" id="close">Done</button></div>
+ <details open><summary>Core AI</summary><div>
+  <label>NAME OF YOUR AI</label><input type="text" data-s="name">
+  <label>CORE API KEY (NVIDIA)</label><input type="password" data-s="key" placeholder="nvapi-…" autocomplete="off"><small>Stored only on this device.</small>
+  <label>CORE MODEL</label><input type="text" data-s="model"><small>The base brain. Used for everything that has no specialist model.</small>
+  <label>API ADDRESS</label><input type="text" data-s="base"><small>Leave as is. If the browser blocks direct calls (CORS), put your relay address here.</small>
+ </div></details>
+ <details><summary>Smart model switching</summary><div>
+  <small>Orion picks a model by task (free, no extra call): pictures → Image analysis, programming → Coding, writing/translating → Text, everything else → Core. Leave a slot's model empty to use Core. API address / key empty = same as Core. If a specialist fails, Orion retries with Core automatically.</small>
+  <label>AUTO-SWITCH</label><select data-s="route"><option value="on">On</option><option value="off">Off (always Core, except pictures)</option></select>
+  <div class="slot"><b>Image analysis</b><label>MODEL</label><input type="text" data-sl="vision.model"><label>API ADDRESS (OPTIONAL)</label><input type="text" data-sl="vision.base"><label>API KEY (OPTIONAL)</label><input type="password" data-sl="vision.key" autocomplete="off">
+   <label>PICTURE DETAIL</label><select data-s="vd"><option value="fast">Fast (small, quickest)</option><option value="bal">Balanced</option><option value="high">Detailed (sharper, slower)</option></select>
+   <label>MAX PICTURE SIZE (KB)</label><input type="number" data-s="vcap" min="60" max="4000"><small>NVIDIA accepts about 180 KB inline. Raise only for other providers.</small></div>
+  <div class="slot"><b>Coding</b><label>MODEL</label><input type="text" data-sl="code.model"><label>API ADDRESS (OPTIONAL)</label><input type="text" data-sl="code.base"><label>API KEY (OPTIONAL)</label><input type="password" data-sl="code.key" autocomplete="off"></div>
+  <div class="slot"><b>Text &amp; writing</b><label>MODEL</label><input type="text" data-sl="text.model" placeholder="e.g. meta/llama-3.3-70b-instruct"><label>API ADDRESS (OPTIONAL)</label><input type="text" data-sl="text.base"><label>API KEY (OPTIONAL)</label><input type="password" data-sl="text.key" autocomplete="off"></div>
+  <small>Other providers (OpenRouter, Groq…) need an OpenAI-compatible address such as https://openrouter.ai/api/v1 and allow browser calls.</small>
+ </div></details>
+ <details><summary>Web access</summary><div>
+  <label>WEB ACCESS</label><select data-s="web"><option value="auto">Auto (when a question needs fresh info, or the AI asks)</option><option value="off">Off</option></select>
+  <small>Works without any key: DuckDuckGo through your relay, else Wikipedia. Links you paste are read automatically. The globe button forces a search for one message.</small>
+  <label>TAVILY KEY (OPTIONAL, BETTER RESULTS)</label><input type="password" data-s="tav" placeholder="tvly-…" autocomplete="off">
+ </div></details>
+ <details><summary>Voice</summary><div>
+  <label>DICTATION LANGUAGE</label><select data-s="lang" id="s_lang"></select><small>Auto follows the language of your last message.</small>
+  <label>SEND AUTOMATICALLY AFTER DICTATION</label><select data-s="dsend"><option value="on">Yes</option><option value="off">No, let me edit first</option></select>
+  <label>READ REPLIES ALOUD</label><select data-s="speak"><option value="never">Never</option><option value="always">Always</option></select>
+ </div></details>
+ <details><summary>Appearance &amp; logo</summary><div>
+  <label>THEME</label><select data-s="theme"><option value="dark">Dark</option><option value="light">Light</option></select>
+  <label>TEXT SIZE</label><select data-s="fs" data-n="1"><option value="13">Small</option><option value="15">Normal</option><option value="17">Large</option></select>
+  <label>HIGHLIGHT COLOUR</label><div class="row" id="sw"></div>
+  <label>BACKGROUND PICTURE</label><div class="row"><button class="btn" id="bgpick">Choose picture…</button><button class="btn" id="bgclear">Remove</button><input type="file" id="bgfile" accept="image/*" hidden></div>
+  <label>BACKGROUND TRANSPARENCY</label><input type="range" data-s="veil" min="0" max="90" style="width:100%">
+  <label>APP LOGO</label><div class="row"><img id="logoprev" alt=""><select data-lg="kind" style="flex:1"><option value="default">Original</option><option value="text">Letter or emoji</option><option value="image">My picture</option></select></div>
+  <div class="row" style="margin-top:8px"><input type="text" data-lg="text" maxlength="2" placeholder="Letter / emoji" style="width:110px"><input type="color" data-lg="c1"><input type="color" data-lg="c2"><select data-lg="shape" style="flex:1"><option value="round">Rounded</option><option value="circle">Circle</option><option value="square">Square</option></select></div>
+  <div class="row" style="margin-top:8px"><button class="btn" id="lgpick">Choose picture…</button><input type="file" id="lgfile" accept="image/*" hidden></div>
+  <small>The logo shows in the app. For the iPhone home-screen icon, remove the app from the Home Screen and add it again.</small>
+ </div></details>
+ <details><summary>Pictures &amp; limits</summary><div>
+  <label>IMAGE GENERATION MODEL</label><input type="text" data-s="img"><small>If it fails, Orion draws with SVG instead.</small>
+  <label>CONVERSATION MEMORY (MESSAGES SENT EACH TIME)</label><select data-s="ctx" data-n="1"><option value="8">8 (saves most usage)</option><option value="16">16</option><option value="30">30</option></select>
+  <small id="usage"></small>
+ </div></details>
+ <details><summary>Backup</summary><div>
+  <div class="row"><button class="btn" id="bk_out">Export</button><button class="btn" id="bk_in">Import</button><input type="file" id="bk_f" accept=".json" hidden></div><small>Moves chats, memory, personality and settings (not API keys) to another device.</small>
+ </div></details>
+</div></div>
+<div id="ai" class="ov"><div class="sheet">
+ <div class="sh"><h3>AI personality</h3><button class="btn p" id="aiclose">Done</button></div>
+ <label>QUICK PRESETS</label><div class="row"><button class="btn" data-preset="friend">Friendly buddy</button><button class="btn" data-preset="pro">Pro assistant</button><button class="btn" data-preset="fast">Fast &amp; blunt</button></div>
+ <label>PERSONALITY</label><select data-p="style"><option value="balanced">Balanced</option><option value="friendly">Friendly</option><option value="professional">Professional</option><option value="witty">Witty</option><option value="direct">Direct</option><option value="teacher">Patient teacher</option><option value="coach">Coach</option><option value="nerd">Curious expert</option></select>
+ <label>TONE</label><select data-p="formal"><option value="casual">Casual</option><option value="neutral">Neutral</option><option value="formal">Formal</option></select>
+ <label>EMOJIS</label><select data-p="emoji"><option value="none">Never</option><option value="rare">Rarely</option><option value="some">Some</option><option value="lots">Lots</option></select>
+ <label>HEADERS &amp; FORMATTING</label><select data-p="format"><option value="minimal">Plain text</option><option value="normal">Light</option><option value="rich">Structured (headers, lists, tables)</option></select>
+ <label>ANSWER LENGTH</label><select data-p="length"><option value="short">Short</option><option value="balanced">Balanced</option><option value="detailed">Detailed</option></select>
+ <label>REPLY LANGUAGE</label><select data-p="lang" id="p_lang"></select>
+ <label>CALL ME</label><input type="text" data-p="callme" placeholder="Name or nickname">
+ <label>PUSH BACK WHEN I AM WRONG</label><select data-p="challenge"><option value="on">Yes</option><option value="off">No</option></select>
+ <label>SUGGEST A NEXT STEP</label><select data-p="proactive"><option value="off">No</option><option value="on">Yes, when useful</option></select>
+ <label>EXTRA PERSONALITY NOTES</label><textarea class="big" data-p="custom" placeholder="e.g. Act like a calm pirate captain. Use cooking metaphors."></textarea>
+ <label>YOUR INSTRUCTIONS FOR THE AI</label><textarea class="big" data-s="instr" placeholder="e.g. Answer short. Call me Razvan. Reply in Romanian."></textarea>
+ <label>LEARNING</label><select data-s="learn"><option value="on">Learn from my requests and style</option><option value="off">Off</option></select>
+ <div class="learned" id="learned" style="margin-top:8px"></div>
+ <div class="row" style="margin-top:8px"><button class="btn" id="resetL">Reset learned style</button></div>
+ <label>MEMORY</label><div id="memlist"></div><small>Say “remember that …” in chat to add, “forget …” to remove, “what do you remember” to list. Facts like “I live in …” are saved automatically while learning is on. Saying “shorter” or “no emojis” updates the settings above.</small>
+</div></div>
+<script src="math.js"></script>
+<script src="brain.js"></script>
+<script src="files.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}};
+
+const DEF={name:'Orion',key:'',model:'nvidia/llama-3.3-nemotron-super-49b-v1.5',base:'https://integrate.api.nvidia.com/v1',accent:'#66A5FF',theme:'dark',veil:50,lang:'auto',speak:'never',img:'black-forest-labs/flux.1-schnell',instr:'',web:'auto',tav:'',vis:'',fs:15,route:'on',learn:'on',dsend:'on',vd:'bal',vcap:175,ctx:16,
+ slots:{vision:{base:'',key:'',model:'meta/llama-3.2-90b-vision-instruct'},code:{base:'',key:'',model:'qwen/qwen2.5-coder-32b-instruct'},text:{base:'',key:'',model:''}},
+ p:{style:'balanced',formal:'neutral',emoji:'some',format:'normal',length:'balanced',lang:'auto',callme:'',challenge:'on',proactive:'off',custom:''},
+ logo:{kind:'default',text:'O',c1:'#66A5FF',c2:'#2B4C9B',shape:'round',img:''}};
+function mergeS(sv){sv=sv||{};const s=Object.assign({},DEF,sv);s.slots={};for(const k in DEF.slots)s.slots[k]=Object.assign({},DEF.slots[k],(sv.slots||{})[k]);s.p=Object.assign({},DEF.p,sv.p);s.logo=Object.assign({},DEF.logo,sv.logo);if(sv.vis&&!(sv.slots&&sv.slots.vision))s.slots.vision.model=sv.vis;return s}
+let S=mergeS(LS.get('orion_settings',{}));
+if(!S.v6){S.v6=1;S.lang='auto';if(S.speak!=='always')S.speak='never';LS.set('orion_settings',S)}
+let chats=LS.get('orion_chats',[]);let cur=null;let busy=false;
+const save=()=>{LS.set('orion_settings',S)};const saveChats=()=>{LS.set('orion_chats',chats.slice(0,60).map(c=>Object.assign({},c,{msgs:c.msgs.map(m=>{const x=Object.assign({},m);delete x.imgs;return x})})))};
+let MEM=LS.get('orion_mem',[]);const saveMem=()=>LS.set('orion_mem',MEM);
+function sys(extra,o){return Brain.head(S,MEM,extra,o)+`For ANY maths, write LaTeX: inline as $...$ and display equations as $$...$$ (use \\frac, \\sqrt, ^, _, \\times, \\pm, \\sum, \\int etc.). Show solutions step by step, one equation per line, and state the final answer clearly.
+FILES: when the user asks you to create/make/write a document, presentation, spreadsheet or file, reply with ONE short sentence and then a fenced block exactly like:
+\`\`\`orion-file
+{"type":"docx","filename":"name","title":"Title","blocks":[{"h":1,"text":"Heading"},{"p":"Paragraph with **bold**"},{"ul":["a","b"]},{"ol":["a","b"]},{"table":[["Head1","Head2"],["x","y"]]}]}
+\`\`\`
+Types: docx (blocks as above), pptx ({"slides":[{"title":"Deck title","subtitle":"..."},{"title":"Slide","bullets":["..",".."]}]} first slide is the title slide, 5-12 slides, max 6 short bullets each), xlsx ({"sheets":[{"name":"Sheet1","rows":[["Header","Header"],["a",1],["=SUM(B2:B3)"]]}]} first row is the header, numbers as numbers, formulas start with =), csv ({"rows":[[..]]}), txt/md/html/json/py/js/etc ({"text":"full file content"}), pdf (same as docx). The JSON must be valid on ONE block, double-quoted, no comments. Write real, complete, well-structured content in the user's language. Never put the file's content outside the block.
+IMAGES: for photos/art/illustrations the user wants generated, reply with one short sentence and a block:
+\`\`\`orion-image
+{"prompt":"detailed English description of the image, style, lighting","width":1024,"height":1024}
+\`\`\`
+For simple diagrams, logos, icons, charts or flowcharts you may instead draw one \`\`\`svg block with a complete <svg viewBox=...> (no scripts, no external links).`}
+/* ---- markdown + math ---- */
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function md(t){
+  const hold=[];const keep=h=>{hold.push(h);return '\u0001'+(hold.length-1)+'\u0002'};
+  t=t.replace(/```orion-image\s*\n?([\s\S]*?)```/g,(m,j)=>keep(imageCard(j))).replace(/```orion-image[\s\S]*$/,()=>keep('<div class="icard"><div class="ph">🎨 Preparing image…</div></div>'));
+  t=t.replace(/```svg\s*\n([\s\S]*?)```/g,(m,j)=>keep(svgCard(j)));
+  t=t.replace(/```orion-file\s*\n?([\s\S]*?)```/g,(m,j)=>keep(fileCard(j))).replace(/```orion-file[\s\S]*$/,()=>keep('<div class="fcard"><span class="fi">⏳</span><div class="fn"><b>Preparing your file…</b></div></div>'));
+  t=t.replace(/```(\w*)\n?([\s\S]*?)(```|$)/g,(m,l,c)=>keep('<div class="cb"><span>'+(l||'code')+'</span><button data-cc>Copy</button></div><pre><code>'+esc(c.replace(/\n$/,''))+'</code></pre>'));
+  t=t.replace(/`([^`\n]+)`/g,(m,c)=>keep('<code>'+esc(c)+'</code>'));
+  t=t.replace(/\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]/g,(m,a,b)=>keep('<div class="math block">'+OrionMath.render((a||b).trim())+'</div>'));
+  t=t.replace(/\\\(([\s\S]+?)\\\)|\$([^\$\n]+?)\$/g,(m,a,b)=>{const x=(a||b);if(!a&&/^\s|\s$/.test(x))return m;return keep('<span class="math">'+OrionMath.render(x.trim())+'</span>')});
+  t=esc(t);
+  t=t.replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  t=t.replace(/(^|\n)((?:\|.+\|[ \t]*(?:\n|$)){2,})/g,(m,p,b)=>{const r=b.trim().split('\n').map(x=>x.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim()));
+    if(!r[1]||!r[1].every(c=>/^:?-{2,}:?$/.test(c)))return m;const row=(a,tag)=>'<tr>'+a.map(c=>'<'+tag+'>'+c+'</'+tag+'>').join('')+'</tr>';
+    return p+'<table>'+row(r[0],'th')+r.slice(2).map(a=>row(a,'td')).join('')+'</table>\n'});
+  t=t.replace(/^### (.+)$/gm,'<h4>$1</h4>').replace(/^## (.+)$/gm,'<h3>$1</h3>').replace(/^# (.+)$/gm,'<h3>$1</h3>');
+  t=t.replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/(^|[\s(])\*([^*\n]+)\*/g,'$1<i>$2</i>');
+  t=t.replace(/(^|\n)((?:[-*] .+(?:\n|$))+)/g,(m,p,l)=>p+'<ul>'+l.trim().split('\n').map(x=>'<li>'+x.replace(/^[-*] /,'')+'</li>').join('')+'</ul>\n');
+  t=t.replace(/(^|\n)((?:\d+\. .+(?:\n|$))+)/g,(m,p,l)=>p+'<ol>'+l.trim().split('\n').map(x=>'<li>'+x.replace(/^\d+\. /,'')+'</li>').join('')+'</ol>\n');
+  t=t.split(/\n{2,}/).map(p=>/^\s*(<(h3|h4|ul|ol|table)|\u0001\d+\u0002\s*$)/.test(p)?p:'<p>'+p.replace(/\n/g,'<br>')+'</p>').join('');
+  return t.replace(/\u0001(\d+)\u0002/g,(m,i)=>hold[+i]);
+}
+/* ---- ui ---- */
+function el(c,h){const d=document.createElement('div');d.className=c;if(h!=null)d.innerHTML=h;return d}
+const QP=[['Analyse a picture','@attach'],['Latest news','Search the web: the latest world news today'],['Write code','Write a Python script that '],['Translate','Translate to English: ']];
+const greet=()=>S.p.callme?'Hi '+esc(S.p.callme)+', what can I do for you?':'Ask me anything: text, pictures, code, the web.';
+let stick=true;
+function draw(anim){
+  const log=$('log');log.innerHTML='';
+  if(!cur||!cur.msgs.length){const e=el('empty','<img class="elogo" src="'+logoSrc+'" alt=""><h2>'+esc(S.name)+'</h2><div>'+greet()+'</div><div class="qp"></div>');
+    QP.forEach(q=>{const b=document.createElement('button');b.textContent=q[0];b.onclick=()=>{if(q[1]==='@attach')$('attf').click();else{$('in').value=q[1];autosize();$('in').focus()}};e.querySelector('.qp').appendChild(b)});log.appendChild(e);return}
+  const n=cur.msgs.length;cur.msgs.forEach((m,i)=>log.appendChild(bubble(m,i===n-1,anim&&i>=n-anim)));log.scrollTop=log.scrollHeight;hydrate(log,false);
+}
+function act(m,last){return '<button data-copy aria-label="Copy">'+ic(P.copy,16)+'</button><button data-say aria-label="Read aloud">'+ic(P.spk,16)+'</button><button data-fb="1" class="'+(m.fb===1?'on':'')+'" aria-label="Good answer">'+ic(P.up,16)+'</button><button data-fb="-1" class="'+(m.fb===-1?'on':'')+'" aria-label="Bad answer">'+ic(P.up,16,'transform:rotate(180deg)')+'</button>'+(last?'<button data-regen aria-label="Retry">'+ic(P.retry,16)+'</button>':'')}
+function bubble(m,last,fresh){
+  const fr=fresh?' fresh':'';
+  if(m.role==='user'){const img=(m.imgs||[]).map(u=>'<img class="ui" src="'+u+'">').join('');return el('msg user'+fr,img+(m.att||[]).map(n=>'<span class="att">'+esc(n)+'</span>').join('')+(m.att&&m.att.length?'<br>':'')+esc(m.content))}
+  const src=(m.sources||[]).length?'<div class="src">Sources'+(m.webvia?' ('+esc(m.webvia)+')':'')+': '+m.sources.map((x,i)=>'<a href="'+esc(x.url)+'" target="_blank" rel="noopener">['+(i+1)+'] '+esc((x.title||x.url).slice(0,40))+'</a>').join('')+'</div>':'';
+  const live=busy&&last;
+  return el('msg ai glass'+fr+(live?' live':''),'<div class="who"><span>'+esc(S.name.toUpperCase())+'</span><span class="st"><i class="orb"></i><span class="tl">Thinking</span></span>'+(m.via?'<span class="via">'+esc(m.via)+'</span>':'')+'</div><div class="c">'+md(m.content)+'</div>'+src+'<div class="act">'+act(m,last)+'</div>')}
+function newChat(){cur={id:Date.now(),title:'New chat',msgs:[]};chats.unshift(cur);draw();hist()}
+function hist(){const h=$('hl'),q=($('hsearch').value||'').toLowerCase();h.innerHTML='';
+  chats.filter(c=>!q||c.title.toLowerCase().includes(q)||c.msgs.some(m=>(m.content||'').toLowerCase().includes(q))).forEach(c=>{const d=el('it'+(c===cur?' on':''),'<span>'+esc(c.title)+'</span><span data-x>✕</span>');
+  d.onclick=e=>{if(e.target.dataset.x!==undefined){chats=chats.filter(x=>x!==c);if(cur===c)cur=chats[0]||null;if(!cur)newChat();saveChats();hist();draw();return}cur=c;closeDrawer();hist();draw()};h.appendChild(d)})}
+function openDrawer(){$('hist').classList.add('open');$('scrim').classList.add('show')}
+function closeDrawer(){$('hist').classList.remove('open');$('scrim').classList.remove('show')}
+let tT=0;function toast(t){const x=$('toast');x.textContent=t;x.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>x.classList.remove('show'),2600)}
+let ctl=null,pend=[],webOnce=false,lastLang=null;
+const needsWeb=t=>/\b(today|tonight|latest|news|current|currently|right now|price|prices|weather|score|who (is|won|was)|stock|exchange rate|release|trending|recent|this (week|month|year)|202[5-9]|azi|ultimele|vreme|pret|cursul|stiri|acum|actual|aujourd|actualit|heute|aktuell|hoy|noticias|oggi|notizie)\b|\bsearch\b|\bgoogle\b|\bcauta\b/i.test(t.normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+const LBL={vision:'Vision',code:'Code',text:'Text'};
+function route(task){
+  const core={base:S.base,key:S.key,model:S.model,slot:'core',task};
+  const sl=S.slots[task];
+  if(!sl||!sl.model||(S.route==='off'&&task!=='vision'))return core;
+  return {base:sl.base||S.base,key:sl.key||S.key,model:sl.model,slot:task,task};
+}
+function fallbacks(rt){
+  if(rt.slot==='core')return [];
+  const a=[];
+  if(rt.slot==='vision'&&rt.model!==DEF.slots.vision.model)a.push({base:S.base,key:S.key,model:DEF.slots.vision.model,slot:'vision',task:'vision'});
+  if(rt.slot!=='vision')a.push({base:S.base,key:S.key,model:S.model,slot:'core',task:rt.task});
+  return a;
+}
+const maxTok=(task,t)=>{let n={short:900,balanced:2048,detailed:3500}[S.p.length]||2048;if(task==='code'||task==='vision')n=Math.max(n,2400);if(/\b(document|file|presentation|powerpoint|excel|word|pdf|docx|pptx|xlsx|spreadsheet|csv)\b/i.test(t))n=Math.max(n,3500);return n};
+const thinkHTML='<div class="think"><i></i><i></i><i></i></div>';
+const phase=t=>{if((t.match(/```/g)||[]).length%2){const l=(t.match(/```([\w-]+)/g)||[]).pop()||'';return /orion-file/.test(l)?'Preparing your file':/orion-image/.test(l)?'Creating image':/svg/.test(l)?'Drawing':'Writing code'}return 'Writing'};
+function setSt(b,t){const e=b&&b.querySelector('.tl');if(e&&e.textContent!==t)e.textContent=t}
+const caret=h=>/<\/(p|li)>\s*$/.test(h)?h.replace(/<\/(p|li)>\s*$/,'<span class="caret"></span></$1>'):h+'<span class="caret"></span>';
+function memCmd(t){
+  let m=t.match(/^(?:please\s+)?remember(?:\s+that|\s+this)?[:,]?\s+(.{3,})$/i);
+  if(m){const f=m[1].trim().replace(/^my /i,"the user's ").replace(/^i /i,'the user ').replace(/\.$/,'');MEM.push({id:Date.now(),text:f.charAt(0).toUpperCase()+f.slice(1)+'.'});saveMem();memUI();return 'Got it, I will remember: '+m[1].trim()}
+  m=t.match(/^(?:please\s+)?forget(?:\s+that|\s+about)?[:,]?\s+(.{2,})$/i);
+  if(m){const q=m[1].toLowerCase().split(/\W+/).filter(w=>w.length>2);const n=MEM.length;MEM=MEM.filter(f=>!(q.length&&q.filter(w=>f.text.toLowerCase().includes(w)).length/q.length>=.6));saveMem();memUI();return n-MEM.length?'Forgotten ('+(n-MEM.length)+').':'I did not find that in my memory.'}
+  if(/^\s*what (do|did) you (remember|know) about me/i.test(t))return MEM.length?'Here is what I remember:\n\n'+MEM.map(f=>'- '+f.text).join('\n'):'I do not remember anything about you yet. Say “remember that …” to teach me.';
+  const n=t.match(/\bmy name is ([A-Z][\w'-]{1,24})\b/);if(n&&!MEM.some(f=>/name is/i.test(f.text))){MEM.push({id:Date.now(),text:"The user's name is "+n[1]+'.'});saveMem();memUI()}
+  return null}
+function memUI(){const l=$('memlist');l.innerHTML=MEM.length?'':'<small>Nothing yet.</small>';MEM.forEach(f=>{const d=el('mem','<span>'+esc(f.text)+'</span><b title="Delete">✕</b>');d.querySelector('b').onclick=()=>{MEM=MEM.filter(x=>x!==f);saveMem();memUI()};l.appendChild(d)})}
+async function send(regen){
+  if(busy){ctl&&ctl.abort();return ''}
+  let t=$('in').value.trim();
+  if(regen!==true){regen=false}
+  if(!regen&&!t&&!pend.length)return '';
+  if(!S.key){openSheet('set');return ''}
+  if(!cur)newChat();
+  window.speechSynthesis&&speechSynthesis.cancel();
+  if(regen){if(cur.msgs.length&&cur.msgs[cur.msgs.length-1].role==='assistant')cur.msgs.pop();if(!cur.msgs.length)return ''}
+  else{
+    const pc=Brain.prefCmd(t,S.p);if(pc.length){save();toast('Updated: '+pc.join(', '))}
+    const mc=pend.length?null:memCmd(t);
+    if(mc!==null){$('in').value='';autosize();cur.msgs.push({role:'user',content:t},{role:'assistant',content:mc});if(cur.title==='New chat')cur.title=t.slice(0,40);draw(2);hist();saveChats();return mc}
+    const files=pend.filter(x=>x.kind==='text'),imgs=pend.filter(x=>x.kind==='img');
+    const lg=Brain.lang(t);if(lg)lastLang=lg;
+    const um={role:'user',content:t||(imgs.length?'Analyse this picture in detail.':'Please read the attached file.'),att:pend.map(x=>x.name),imgs:imgs.map(x=>x.uri),lang:lg,
+      ctx:files.map(x=>'[Attached file: '+x.name+']\n'+x.text).join('\n\n')};
+    cur.msgs.push(um);if(cur.title==='New chat')cur.title=um.content.slice(0,40);
+    if(S.learn==='on'){Brain.learn(um.content,Brain.task(um.content,imgs.length>0),lg);const nf=Brain.facts(t,MEM);if(nf.length){nf.forEach(f=>MEM.push({id:Date.now()+Math.random(),text:f}));saveMem();toast('Learned: '+nf[0])}}
+    pend=[];chipsUI();$('in').value='';autosize();
+  }
+  const m={role:'assistant',content:''};cur.msgs.push(m);busy=true;stick=true;draw(2);hist();
+  const bub=$('log').lastChild,node=bub.querySelector('.c');node.innerHTML=thinkHTML;
+  $('send').innerHTML=IC.stop;ctl=new AbortController();
+  let hist_=cur.msgs.slice(0,-1).slice(-Math.max(2,S.ctx||16));
+  while(hist_.length&&hist_[0].role!=='user')hist_.shift();
+  const lastU=hist_.map(x=>x.role).lastIndexOf('user'),U=hist_[lastU]||{content:''};
+  const msgs=hist_.map((x,i)=>{const text=x.content+(x.ctx?'\n\n'+x.ctx:'');
+    if(x.role==='user'&&i===lastU&&(x.imgs||[]).length)return {role:'user',content:[{type:'text',text},...x.imgs.map(u=>({type:'image_url',image_url:{url:u}}))]};
+    return {role:x.role,content:text+(x.role==='user'&&(x.imgs||[]).length&&i!==lastU?' [picture attached earlier]':'')}});
+  const hasImg=msgs.some(x=>Array.isArray(x.content));
+  const task=Brain.task(U.content,hasImg);
+  const lang=S.p.lang==='auto'?(U.lang||lastLang):S.p.lang;
+  let extra='';m.sources=[];m.webvia='';
+  let pq=0;const paint=()=>{if(pq)return;pq=requestAnimationFrame(()=>{pq=0;node.innerHTML=caret(md(m.content));setSt(bub,phase(m.content));if(stick)$('log').scrollTop=$('log').scrollHeight})};
+  setSt(bub,hasImg?'Analysing picture':'Thinking');
+  const doSearch=async q=>{setSt(bub,'Searching the web');node.innerHTML=thinkHTML;
+    try{const r=await Brain.search(q,S,lang);if(r.results.length){m.webvia=r.via;m.sources=r.results.map(x=>({title:x.title,url:x.url}));
+      extra+='WEB RESULTS (today is '+new Date().toDateString()+', source: '+r.via+'). Use them for current facts, cite as [1], [2], and say if they do not answer the question:\n'+r.results.map((x,i)=>'['+(i+1)+'] '+x.title+' — '+x.url+'\n'+x.text).join('\n')+'\n'}
+      else extra+='(Web search returned nothing. Answer from your own knowledge and say it may be out of date.)\n'}
+    catch(e){extra+='(Web search failed. Answer from your own knowledge and say it may be out of date.)\n'}};
+  const run=async(rt,canSearch)=>{
+    const sysText=sys(extra,{lang,task,img:hasImg,canSearch});
+    const res=await fetch(rt.base.replace(/\/$/,'')+'/chat/completions',{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+rt.key},
+      body:JSON.stringify({model:rt.model,stream:true,temperature:(rt.task==='code'||rt.task==='vision')?.2:.5,max_tokens:maxTok(rt.task,U.content),messages:[{role:'system',content:sysText}].concat(msgs)})});
+    if(!res.ok)throw new Error('HTTP '+res.status+' '+(await res.text()).slice(0,200));
+    Brain.use(sysText.length+msgs.reduce((a,x)=>a+(typeof x.content==='string'?x.content.length:(x.content[0].text||'').length+800),0),0);
+    const rd=res.body.getReader(),dec=new TextDecoder();let buf='',txt='',q=null;
+    outer:for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop();
+      for(const ln of lines){if(!ln.startsWith('data:'))continue;const d=ln.slice(5).trim();if(d==='[DONE]')continue;
+        try{const j=JSON.parse(d);const c=j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content;if(!c)continue;txt+=c;
+          if(canSearch){const tr=txt.trimStart(),mm=tr.match(/^\[\[SEARCH:\s*([^\]]+?)\s*\]\]/i);
+            if(mm){q=mm[1];try{rd.cancel()}catch(e){}break outer}
+            if(tr.length<9&&'[[SEARCH:'.startsWith(tr.toUpperCase()))continue;
+            if(/^\[\[SEARCH:/i.test(tr)&&!/\]\]/.test(tr)&&tr.length<220)continue}
+          m.content=txt;paint()}catch(e){}}}
+    return {text:txt,q}};
+  let used=null,fell=false;
+  try{
+    const url=(U.content.match(/https?:\/\/[^\s)>\]]+/)||[])[0];
+    if(S.web!=='off'&&!hasImg){
+      if(url){setSt(bub,'Reading page');try{const r=await Brain.read(url,S);m.sources.push({title:r.title,url});extra+='PAGE CONTENT of '+url+':\n'+r.text+'\n'}catch(e){extra+='(Could not open '+url+'. Say so.)\n'}}
+      else if(webOnce||needsWeb(U.content))await doSearch(U.content);
+    }
+    webOnce=false;$('web').classList.remove('on');
+    const canSearch=S.web!=='off'&&!hasImg&&!extra;
+    const cands=[route(task)];cands.push(...fallbacks(cands[0]));
+    for(let ci=0;;ci++){
+      try{
+        let r=await run(cands[ci],canSearch&&ci===0);
+        if(r.q){m.content='';await doSearch(r.q);setSt(bub,'Thinking');r=await run(cands[ci],false)}
+        used=cands[ci];break;
+      }catch(e){if(e.name==='AbortError'||ci+1>=cands.length)throw e;fell=true;m.content='';node.innerHTML=thinkHTML;setSt(bub,'Switching to core model')}
+    }
+    if(!m.content)m.content='(empty reply)';
+    m.via=used.slot==='core'?(fell?'Core (fallback)':''):LBL[used.slot]+' · '+used.model.split('/').pop();
+  }catch(e){
+    if(e.name==='AbortError'){m.content+=(m.content?'\n\n':'')+'_(stopped)_'}
+    else m.content+=(m.content?'\n\n':'')+'⚠️ '+e.message+(/Failed to fetch|NetworkError|Load failed/.test(e.message)?' — the browser may be blocking direct calls (CORS) or you are offline. See Settings → API address.':'')}
+  cancelAnimationFrame(pq);busy=false;ctl=null;$('send').innerHTML=IC.send;Brain.use(0,m.content.length);saveChats();draw();hydrate($('log'),true);return m.content;
+}
+/* ---- attachments ---- */
+const TEXTX=/\.(txt|md|csv|tsv|json|html?|css|js|ts|py|java|c|cpp|cs|go|rs|php|rb|sh|sql|xml|yml|yaml|ini|log|tex|rtf)$/i;
+function chipsUI(){const c=$('chips');c.innerHTML='';c.classList.toggle('show',!!pend.length);pend.forEach((x,i)=>{const d=el('chip',(x.kind==='img'?'<img src="'+x.uri+'">':'📄')+'<span class="n">'+esc(x.name)+'</span><b>✕</b>');d.querySelector('b').onclick=()=>{pend.splice(i,1);chipsUI()};c.appendChild(d)})}
+async function addFiles(list){
+  for(const f of list){
+    if(pend.length>=6){status('Up to 6 attachments per message.');setTimeout(()=>status(''),2500);break}
+    try{
+      if(/^image\//.test(f.type)){pend.push({kind:'img',name:f.name||'picture',uri:await shrinkImg(f)})}
+      else if(/\.docx$/i.test(f.name))pend.push({kind:'text',name:f.name,text:cut(await OrionFiles.readDocx(await f.arrayBuffer()))});
+      else if(/\.pptx$/i.test(f.name))pend.push({kind:'text',name:f.name,text:cut(await OrionFiles.readPptx(await f.arrayBuffer()))});
+      else if(/\.xlsx$/i.test(f.name))pend.push({kind:'text',name:f.name,text:cut(await OrionFiles.readXlsx(await f.arrayBuffer()))});
+      else if(TEXTX.test(f.name)||/^text\//.test(f.type))pend.push({kind:'text',name:f.name,text:cut(await f.text())});
+      else{status('Cannot read '+f.name+' (PDF and old .doc/.xls are not supported yet).');setTimeout(()=>status(''),3500)}
+    }catch(e){status('Could not read '+f.name);setTimeout(()=>status(''),3000)}
+  }chipsUI()}
+const cut=t=>t.length>24000?t.slice(0,24000)+'\n[…file continues, cut for length]':t;
+function shrink2(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const k=Math.min(1,1024/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.8))};im.onerror=no;im.src=u})}
+$('att').onclick=()=>$('attf').click();$('attf').onchange=e=>{addFiles([...e.target.files]);e.target.value=''};
+$('in').addEventListener('paste',e=>{const fs=[...(e.clipboardData&&e.clipboardData.files||[])];if(fs.length){e.preventDefault();addFiles(fs)}});
+let dc=0;addEventListener('dragenter',e=>{e.preventDefault();dc++;$('drop').classList.add('show')});addEventListener('dragleave',()=>{if(--dc<=0){dc=0;$('drop').classList.remove('show')}});addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault();dc=0;$('drop').classList.remove('show');addFiles([...e.dataTransfer.files])});
+/* ---- message buttons ---- */
+async function copyText(t){try{await navigator.clipboard.writeText(t)}catch(x){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}}
+$('log').addEventListener('click',async e=>{
+  const c=e.target.closest('[data-copy]');if(c){copyText(c.closest('.msg').querySelector('.c').innerText);c.innerHTML=ic(P.ok,16);setTimeout(()=>c.innerHTML=ic(P.copy,16),1200);return}
+  const cc=e.target.closest('[data-cc]');if(cc){copyText(cc.parentElement.nextElementSibling.innerText);cc.textContent='Copied';setTimeout(()=>cc.textContent='Copy',1200);return}
+  if(e.target.closest('[data-regen]')){send(true);return}
+  const f=e.target.closest('[data-fb]'),s=e.target.closest('[data-say]');
+  if(f||s){const i=[...$('log').children].indexOf((f||s).closest('.msg')),m=cur&&cur.msgs[i];if(!m)return;
+    if(s){speak(m.content);return}
+    const v=+f.dataset.fb,old=m.fb||0;m.fb=old===v?0:v;Brain.feedback(m.content.length,m.fb,old);saveChats();
+    f.parentElement.querySelectorAll('[data-fb]').forEach(b=>b.classList.toggle('on',+b.dataset.fb===m.fb));toast(m.fb===1?'Thanks, I will remember that style':m.fb===-1?'Noted, I will adjust':'Feedback removed')}
+});
+/* ---- backup ---- */
+$('bk_out').onclick=async()=>{const bg=await idbGet('bg').catch(()=>null);const sc=JSON.parse(JSON.stringify(S));sc.key='';sc.tav='';Object.values(sc.slots).forEach(s=>s.key='');const o={orion:2,settings:sc,chats,mem:MEM,bg,learn:Brain.L};saveBlob(new Blob([JSON.stringify(o)],{type:'application/json'}),'orion-backup.json')};
+$('bk_in').onclick=()=>$('bk_f').click();
+$('bk_f').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());if(!o.orion)throw 0;
+  const k=S;S=mergeS(o.settings);S.key=k.key;S.tav=k.tav;Object.keys(S.slots).forEach(n=>S.slots[n].key=k.slots[n].key);S.v6=1;
+  save();chats=o.chats||[];MEM=o.mem||[];saveMem();if(o.learn)Brain.setL(o.learn);if(o.bg)await idbSet('bg',o.bg);cur=chats[0]||null;if(!cur)newChat();saveChats();apply();draw();hist();fillUI();alert('Backup imported.')}catch(x){alert('That is not an Orion backup file.')}e.target.value=''};
+function autosize(){const a=$('in');a.style.height='auto';a.style.height=Math.min(a.scrollHeight,140)+'px'}
+/* ---- icons ---- */
+const ic=(p,s,st)=>'<svg viewBox="0 0 24 24" width="'+(s||20)+'" height="'+(s||20)+'" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"'+(st?' style="'+st+'"':'')+'>'+p+'</svg>';
+const P={menu:'<path d="M4 7h16M4 12h16M4 17h10"/>',gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+ spark:'<path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+ mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',send:'<path d="M12 19V5M5 12l7-7 7 7"/>',stop:'<rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+ up:'<path d="M7 11v9H4v-9zM7 11l4-8a2 2 0 0 1 2 2v4h5.5a2 2 0 0 1 2 2.3l-1 6A2 2 0 0 1 17.5 20H7"/>',copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
+ retry:'<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',spk:'<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/>',ok:'<path d="M5 12l5 5 9-10"/>'};
+const IC={};for(const k in P)IC[k]=ic(P[k]);
+/* ---- customisation ---- */
+const idb=()=>new Promise((ok,no)=>{const q=indexedDB.open('orion',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error)});
+async function idbGet(k){const d=await idb();return new Promise((ok,no)=>{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error)})}
+async function idbSet(k,v){const d=await idb();return new Promise((ok,no)=>{const t=d.transaction('kv','readwrite');v==null?t.objectStore('kv').delete(k):t.objectStore('kv').put(v,k);t.oncomplete=ok;t.onerror=()=>no(t.error)})}
+function shrink(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.85))};im.onerror=no;im.src=u})}
+/* picture analysis input: adaptive size so it stays under the API limit but as sharp as possible */
+async function shrinkImg(file){
+  const im=await new Promise((ok,no)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>{URL.revokeObjectURL(u);ok(i)};i.onerror=no;i.src=u});
+  let dim={fast:768,bal:1024,high:1344}[S.vd]||1024;const cap=Math.max(60,+S.vcap||175)*1000;let q=.86,uri='';
+  for(let k=0;k<9;k++){const s=Math.min(1,dim/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));
+    const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.imageSmoothingQuality='high';x.drawImage(im,0,0,c.width,c.height);uri=c.toDataURL('image/jpeg',q);
+    if(uri.length<=cap)break;if(q>.6)q-=.08;else dim=Math.round(dim*.85)}
+  return uri}
+let logoSrc='icon-192.png';
+async function applyLogo(){
+  let u=null,a=null;try{u=await Brain.logoURL(S.logo,256);a=u&&await Brain.logoURL(Object.assign({},S.logo,{shape:'square'}),180)}catch(e){}
+  logoSrc=u||'icon-192.png';$('logo').src=logoSrc;const pv=$('logoprev');if(pv)pv.src=logoSrc;
+  const set=(rel,href)=>{let l=document.querySelector('link[rel="'+rel+'"]');if(!l){l=document.createElement('link');l.rel=rel;document.head.appendChild(l)}l.href=href};
+  set('apple-touch-icon',a||'icon-192.png');set('icon',u||'icon-192.png');
+  let t=document.querySelector('meta[name="apple-mobile-web-app-title"]');if(!t){t=document.createElement('meta');t.name='apple-mobile-web-app-title';document.head.appendChild(t)}t.content=S.name;
+  if(!cur||!cur.msgs.length)draw();
+}
+function apply(){
+  const r=document.documentElement;r.dataset.theme=S.theme;r.style.setProperty('--accent',S.accent);r.style.setProperty('--veil',(S.veil/100).toFixed(2));r.style.setProperty('--fs',(S.fs||15)+'px');
+  document.title=S.name;$('title').textContent=S.name;
+  idbGet('bg').then(u=>{r.style.setProperty('--bgimg',u?`url(${u})`:'none')}).catch(()=>{});applyLogo();
+}
+function fillUI(){
+  document.querySelectorAll('[data-s]').forEach(e=>e.value=S[e.dataset.s]);
+  document.querySelectorAll('[data-p]').forEach(e=>e.value=S.p[e.dataset.p]);
+  document.querySelectorAll('[data-lg]').forEach(e=>e.value=S.logo[e.dataset.lg]);
+  document.querySelectorAll('[data-sl]').forEach(e=>{const[a,b]=e.dataset.sl.split('.');e.value=S.slots[a][b]});
+  memUI();learnedUI();const u=Brain.usage();$('usage').textContent='Today: '+u.req+' requests, about '+u.tok.toLocaleString()+' tokens used on this device.';
+}
+function learnedUI(){$('learned').innerHTML=Brain.summary().map(esc).join('<br>')}
+function openSheet(id){fillUI();$(id).classList.add('open')}
+function closeSheets(){document.querySelectorAll('.ov.open').forEach(o=>o.classList.remove('open'));if(!cur||!cur.msgs.length)draw()}
+const NOAPPLY=new Set(['key','model','base','tav','img','vcap','ctx','instr','dsend','speak','lang','route','learn','vd','web']);
+document.querySelectorAll('[data-s]').forEach(e=>{const k=e.dataset.s;e.addEventListener(e.tagName==='SELECT'?'change':'input',()=>{let v=(e.type==='number'||e.dataset.n)?+e.value:e.value;if(typeof v==='string'&&e.tagName!=='TEXTAREA')v=v.trim();
+  if(!v&&(k==='name'||k==='model'||k==='base'||k==='img'))v=DEF[k];S[k]=v;save();if(!NOAPPLY.has(k))apply();if(k==='learn')learnedUI()})});
+document.querySelectorAll('[data-p]').forEach(e=>e.addEventListener(e.tagName==='SELECT'?'change':'input',()=>{S.p[e.dataset.p]=e.value;save();if(e.dataset.p==='callme'&&(!cur||!cur.msgs.length))draw()}));
+document.querySelectorAll('[data-sl]').forEach(e=>e.addEventListener('input',()=>{const[a,b]=e.dataset.sl.split('.');S.slots[a][b]=e.value.trim();save()}));
+document.querySelectorAll('[data-lg]').forEach(e=>e.addEventListener(e.tagName==='SELECT'?'change':'input',()=>{S.logo[e.dataset.lg]=e.value;save();applyLogo()}));
+const PRESETS={friend:{style:'friendly',formal:'casual',emoji:'some',format:'normal',length:'balanced'},pro:{style:'professional',formal:'formal',emoji:'none',format:'rich',length:'balanced'},fast:{style:'direct',formal:'neutral',emoji:'none',format:'minimal',length:'short'}};
+document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{Object.assign(S.p,PRESETS[b.dataset.preset]);save();fillUI();toast('Preset applied')});
+$('resetL').onclick=()=>{Brain.resetL();learnedUI();toast('Learned style cleared')};
+$('lgpick').onclick=()=>$('lgfile').click();
+$('lgfile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const u=await new Promise((ok,no)=>{const x=URL.createObjectURL(f),im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d'),s=Math.max(256/im.width,256/im.height);g.drawImage(im,(256-im.width*s)/2,(256-im.height*s)/2,im.width*s,im.height*s);URL.revokeObjectURL(x);ok(c.toDataURL('image/jpeg',.9))};im.onerror=no;im.src=x});S.logo.img=u;S.logo.kind='image';save();fillUI();applyLogo()}catch(x){alert('Could not use that picture.')}e.target.value=''};
+['#66A5FF','#FF7A1A','#6FD08C','#FF7EB6','#A98BFF','#4FD1C5','#FF6B6B','#FFD166'].forEach(c=>{const b=document.createElement('button');b.className='sw';b.style.background=c;b.onclick=()=>{S.accent=c;save();apply()};$('sw').appendChild(b)});
+$('bgpick').onclick=()=>$('bgfile').click();$('bgclear').onclick=async()=>{await idbSet('bg',null);apply()};
+$('bgfile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{await idbSet('bg',await shrink(f));apply()}catch(x){alert('Could not use that picture.')}};
+$('sb').onclick=()=>openSheet('set');$('ab').onclick=()=>openSheet('ai');$('close').onclick=closeSheets;$('aiclose').onclick=closeSheets;
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeSheets()}));
+$('hb').onclick=()=>$('hist').classList.contains('open')?closeDrawer():openDrawer();$('scrim').onclick=closeDrawer;
+$('newc').onclick=()=>{newChat();closeDrawer()};$('hsearch').oninput=hist;
+addEventListener('keydown',e=>{if(e.key==='Escape'){closeSheets();closeDrawer()}});
+/* swipe: left closes the chat menu, swipe from the left edge opens it */
+let tx=0,ty=0;addEventListener('touchstart',e=>{const t=e.touches[0];tx=t.clientX;ty=t.clientY},{passive:true});
+addEventListener('touchend',e=>{const t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*.6)return;
+  if($('hist').classList.contains('open')){if(dx<0)closeDrawer()}else if(tx<28&&dx>0&&!document.querySelector('.ov.open'))openDrawer()},{passive:true});
+$('log').addEventListener('scroll',()=>{const l=$('log');stick=l.scrollHeight-l.scrollTop-l.clientHeight<90},{passive:true});
+$('web').onclick=()=>{if(S.web==='off'){toast('Web access is off in Settings');return}webOnce=!webOnce;$('web').classList.toggle('on',webOnce);toast(webOnce?'Web search on for your next message':'Web search off')};
+$('send').onclick=async()=>{const r=await send(false);if(S.speak==='always'&&r&&!/^⚠️/.test(r))speak(r)};$('in').oninput=autosize;$('in').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!/iPhone|iPad|Android/.test(navigator.userAgent)){e.preventDefault();send(false)}};
+/* keep the layout glued to the real screen (fixes the empty strip at the bottom; follows the keyboard) */
+if(window.visualViewport){const vv=visualViewport,a=$('app');const fit=()=>{const kb=vv.height<innerHeight-120;
+  if(kb){a.style.bottom='auto';a.style.top=vv.offsetTop+'px';a.style.height=vv.height+'px';a.style.paddingBottom='8px';scrollTo(0,0)}else{a.style.bottom='';a.style.top='';a.style.height='';a.style.paddingBottom=''}};
+  vv.addEventListener('resize',fit);vv.addEventListener('scroll',fit)}
+/* ---- generated files ---- */
+const FILES=[];const ICON={docx:'📄',pdf:'📕',pptx:'📊',xlsx:'📈',csv:'📈',txt:'📝',md:'📝',html:'🌐',json:'🧩'};
+function parseSpec(j){j=j.trim();try{return JSON.parse(j)}catch(e){}try{return JSON.parse(j.replace(/,\s*([}\]])/g,'$1'))}catch(e){}return null}
+function fileCard(j){
+  const sp=parseSpec(j);if(!sp)return '<div class="fcard"><span class="fi">⚠️</span><div class="fn"><b>I could not build that file</b><span>Ask me to try again.</span></div></div>';
+  let i=FILES.findIndex(x=>x.j===j);if(i<0){FILES.push({j,sp});i=FILES.length-1}
+  const t=String(sp.type||'txt').toLowerCase(),n=(sp.filename||sp.title||'file')+'.'+t;
+  return `<div class="fcard"><span class="fi">${ICON[t]||'📎'}</span><div class="fn"><b>${esc(n)}</b><span>${t==='pdf'?'Opens print screen → Save as PDF':t.toUpperCase()+' file'}</span></div><button data-dl="${i}">${t==='pdf'?'Open':'Download'}</button></div>`;
+}
+function pdfHtml(sp){const b=OrionFiles.build(Object.assign({},sp,{type:'html',text:null}));return b}
+async function download(i){
+  const sp=Object.assign({},FILES[i].sp);const t=String(sp.type||'txt').toLowerCase();
+  if(t==='pdf'){
+    const body=(sp.blocks||[]).map(b=>b.h?`<h${b.h}>${esc(b.text)}</h${b.h}>`:b.ul?'<ul>'+b.ul.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':b.ol?'<ol>'+b.ol.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ol>':b.table?'<table>'+b.table.map((r,k)=>'<tr>'+r.map(c=>(k?'<td>':'<th>')+esc(c)+(k?'</td>':'</th>')).join('')+'</tr>').join('')+'</table>':'<p>'+esc(b.p||b.text||'')+'</p>').join('').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+    const w=window.open('','_blank');if(!w){alert('Allow pop-ups for this page, then tap again.');return}
+    w.document.write(`<!doctype html><meta charset=utf-8><title>${esc(sp.title||sp.filename||'Document')}</title><style>body{font:14px/1.5 Calibri,Arial,sans-serif;max-width:760px;margin:30px auto;padding:0 16px;color:#222}h1,h2,h3{color:#1F3864}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:5px 8px}th{background:#E8EEF8}</style>${sp.title?`<h1 style="font-size:30px">${esc(sp.title)}</h1>`:''}${body}<script>setTimeout(()=>print(),400)<\/script>`);w.document.close();return}
+  let f;try{f=OrionFiles.build(sp)}catch(e){alert('Could not build the file: '+e.message);return}
+  const file=new File([f.blob],f.name,{type:f.blob.type});
+  const a=document.createElement('a');a.href=URL.createObjectURL(f.blob);a.download=f.name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
+  if(/iPhone|iPad/.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file]})}catch(e){}}
+}
+$('log').addEventListener('click',e=>{const b=e.target.closest('[data-dl]');if(b)download(+b.dataset.dl)});
+
+
+/* ---- images: generated (NVIDIA) and drawn (SVG) ---- */
+const IMGS=[],SVGS=[],IMGCACHE={};
+const hash=t=>{let h=5381;for(let i=0;i<t.length;i++)h=(h*33^t.charCodeAt(i))>>>0;return h.toString(36)};
+function imageCard(j){const sp=parseSpec(j);if(!sp||!sp.prompt)return '<div class="icard"><div class="ph">⚠️ I could not read that image request.</div></div>';
+  const h=hash(sp.prompt+'|'+(sp.width||'')+(sp.height||''));if(!IMGS.find(x=>x.h===h))IMGS.push({h,sp});
+  return `<div class="icard" data-ih="${h}"><div class="ph">🎨 Waiting…</div><div class="ib2"><span>${esc(sp.prompt)}</span></div></div>`}
+function svgCard(src){const clean=src.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/\son\w+\s*=\s*("[^"]*"|'[^']*')/gi,'');SVGS.push(clean);
+  return `<div class="icard"><img alt="drawing" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(clean)}"><div class="ib2"><span>Drawing (SVG)</span><button data-svg="${SVGS.length-1}">Download</button></div></div>`}
+function genUrl(){const b=S.base.replace(/\/$/,'');if(/integrate\.api\.nvidia\.com/.test(b))return 'https://ai.api.nvidia.com/v1/genai/'+S.img;return b.replace(/\/v1$/,'')+'/genai/'+S.img}
+const sniff=b=>b.startsWith('iVBOR')?'png':b.startsWith('/9j/')?'jpeg':b.startsWith('UklGR')?'webp':'png';
+async function genImage(h,node){
+  const it=IMGS.find(x=>x.h===h);if(!it)return;const sp=it.sp;const ph=node.querySelector('.ph')||node.insertBefore(el('ph',''),node.firstChild);
+  ph.textContent='🎨 Creating image… (up to a minute)';
+  try{
+    const w=Math.min(1536,Math.max(256,+sp.width||1024)),hh=Math.min(1536,Math.max(256,+sp.height||1024));
+    const res=await fetch(genUrl(),{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json',Authorization:'Bearer '+S.key},body:JSON.stringify({prompt:sp.prompt,width:w,height:hh,seed:0,steps:/schnell/.test(S.img)?4:30})});
+    if(!res.ok)throw new Error('HTTP '+res.status+' '+(await res.text()).slice(0,160));
+    const j=await res.json();const b=(j.artifacts&&j.artifacts[0]&&j.artifacts[0].base64)||j.image||(j.data&&j.data[0]&&(j.data[0].b64_json||j.data[0].base64))||j.b64_json;
+    if(!b)throw new Error('no image in reply');
+    const uri=`data:image/${sniff(b)};base64,${b}`;IMGCACHE[h]=uri;idbSet('img:'+h,uri).catch(()=>{});showImg(node,h,uri);
+  }catch(e){ph.innerHTML='⚠️ '+esc(e.message)+'<br><small>Check Settings → Image model, or ask me to draw it as an SVG.</small><br><button data-igen="'+h+'" style="margin-top:8px">Try again</button>'}
+}
+function showImg(node,h,uri){const sp=IMGS.find(x=>x.h===h).sp;node.innerHTML=`<img alt="${esc(sp.prompt)}" src="${uri}"><div class="ib2"><span>${esc(sp.prompt)}</span><button data-idl="${h}">Save</button></div>`}
+async function hydrate(root,fresh){
+  for(const n of root.querySelectorAll('.icard[data-ih]')){const h=n.dataset.ih;
+    if(IMGCACHE[h]){showImg(n,h,IMGCACHE[h]);continue}
+    let u=null;try{u=await idbGet('img:'+h)}catch(e){}
+    if(u){IMGCACHE[h]=u;showImg(n,h,u)}
+    else if(fresh)genImage(h,n);
+    else n.querySelector('.ph').innerHTML='<button data-igen="'+h+'">🎨 Create image</button>'}
+}
+async function saveBlob(blob,name){const file=new File([blob],name,{type:blob.type});
+  if(/iPhone|iPad/.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file]});return}catch(e){}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+$('log').addEventListener('click',async e=>{
+  const g=e.target.closest('[data-igen]');if(g){genImage(g.dataset.igen,g.closest('.icard'));return}
+  const d=e.target.closest('[data-idl]');if(d){const u=IMGCACHE[d.dataset.idl];if(u)saveBlob(await (await fetch(u)).blob(),'orion-image.'+(u.slice(11,15)==='jpeg'?'jpg':u.slice(11,14)));return}
+  const v=e.target.closest('[data-svg]');if(v)saveBlob(new Blob([SVGS[+v.dataset.svg]],{type:'image/svg+xml'}),'orion-drawing.svg');
+});
+
+/* ---- voice: dictation (mic) and voice chat (talk) ---- */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function status(t){const v=$('vs');v.textContent=t||'';v.classList.toggle('show',!!t)}
+function speechText(t){
+  const L=x=>x.replace(/\\sqrt\[(\w+)\]\{([^{}]*)\}/g,'$1th root of $2').replace(/\\sqrt\{([^{}]*)\}/g,'square root of $1').replace(/\\(?:d|t)?frac\{([^{}]*)\}\{([^{}]*)\}/g,'$1 over $2').replace(/\\(?:d|t)?frac\{([^{}]*)\}\{([^{}]*)\}/g,'$1 over $2')
+   .replace(/\^\{?2\}?/g,' squared').replace(/\^\{?3\}?/g,' cubed').replace(/\^\{([^{}]*)\}/g,' to the power $1').replace(/\^(\w)/g,' to the power $1').replace(/_\{?(\w+)\}?/g,' sub $1')
+   .replace(/\\pm/g,' plus or minus ').replace(/\\(?:times|cdot)/g,' times ').replace(/\\div/g,' divided by ').replace(/\\(?:leq?)/g,' less than or equal to ').replace(/\\(?:geq?)/g,' greater than or equal to ')
+   .replace(/\\pi/g,' pi ').replace(/\\infty/g,' infinity ').replace(/\\sum/g,' the sum of ').replace(/\\int/g,' the integral of ').replace(/\\[a-zA-Z]+/g,' ').replace(/[{}\\]/g,'').replace(/=/g,' equals ').replace(/\+/g,' plus ').replace(/(\w)\s*-\s*(\w)/g,'$1 minus $2');
+  return t.replace(/```[\s\S]*?```/g,' code omitted. ').replace(/\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]/g,(m,a,b)=>' '+L(a||b)+'. ').replace(/\\\(([\s\S]+?)\\\)|\$([^$\n]+?)\$/g,(m,a,b)=>' '+L(a||b)+' ')
+   .replace(/[*_#`>|]/g,'').replace(/\s+/g,' ').trim();
+}
+function speak(t,done){
+  const ss=window.speechSynthesis;if(!ss){done&&done();return}
+  ss.cancel();const u=new SpeechSynthesisUtterance(speechText(t));u.lang=S.lang;
+  const v=ss.getVoices().find(x=>x.lang===S.lang)||ss.getVoices().find(x=>x.lang.slice(0,2)===S.lang.slice(0,2));if(v)u.voice=v;
+  let fin=false;const end=()=>{if(!fin){fin=true;done&&done()}};u.onend=end;u.onerror=end;ss.speak(u);
+}
+let rec=null,dict=false,vErr=0;
+const vlang=()=>S.lang!=='auto'?S.lang:(lastLang&&Brain.LOC[lastLang])||navigator.language||'en-US';
+function micOn(on){dict=on;$('mic').classList.toggle('on',on);$('mic').classList.toggle('rec',on)}
+function stopVoice(){const was=dict;micOn(false);vErr=0;status('');try{rec&&rec.abort()}catch(e){}rec=null;return was}
+function listen(){
+  if(!dict)return;
+  if(!SR){status('This browser has no speech recognition. Try Safari or Chrome.');micOn(false);return}
+  rec=new SR();rec.lang=vlang();rec.interimResults=true;rec.continuous=false;let fin='',got=false;const base=$('in').value.trim()?$('in').value.trim()+' ':'';
+  rec.onstart=()=>status('Listening…');
+  rec.onresult=e=>{got=true;let it='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)fin+=r[0].transcript;else it+=r[0].transcript}$('in').value=(base+fin+it).trim();autosize()};
+  rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){status('Microphone is blocked. Allow it in your browser/phone settings.');micOn(false);return}
+    if(e.error==='no-speech'||e.error==='aborted')return;vErr++;if(vErr>3){status('Voice stopped: '+e.error);micOn(false)}};
+  rec.onend=async()=>{
+    if(!dict)return;
+    if(!got){micOn(false);status('');return}
+    micOn(false);status('');const l=Brain.lang($('in').value);if(l)lastLang=l;
+    if(S.dsend==='on'){const r=await send();if(S.speak==='always'&&r&&!/^⚠️/.test(r))speak(r)}else $('in').focus();
+  };
+  try{rec.start()}catch(e){setTimeout(listen,400)}
+}
+$('mic').onclick=()=>{const was=stopVoice();if(was)return;micOn(true);listen()};
+if(window.speechSynthesis)speechSynthesis.getVoices();
+
+$('hb').innerHTML=IC.menu;$('ab').innerHTML=IC.spark;$('sb').innerHTML=IC.gear;$('att').innerHTML=IC.plus;$('web').innerHTML=IC.globe;$('mic').innerHTML=IC.mic;$('send').innerHTML=IC.send;
+$('s_lang').innerHTML='<option value="auto">Auto (follow my language)</option>'+Object.keys(Brain.LOC).map(k=>'<option value="'+Brain.LOC[k]+'">'+Brain.NAMES[k]+'</option>').join('')+'<option value="en-GB">English (UK)</option>';
+$('p_lang').innerHTML='<option value="auto">Auto-detect (reply in my language)</option>'+Object.keys(Brain.NAMES).map(k=>'<option value="'+k+'">Always '+Brain.NAMES[k]+'</option>').join('');
+cur=chats[0]||null;apply();if(!cur)newChat();else{draw();hist()}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+window.__orion={md,speechText};
+</script></body></html>
